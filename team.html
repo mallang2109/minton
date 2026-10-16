@@ -1,0 +1,1773 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>배드민턴 팀 매칭</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:   #3b82f6; --blue-d:  #2563eb;
+      --green:  #10b981; --green-d: #059669;
+      --red:    #ef4444; --red-d:   #dc2626;
+      --slate:  #64748b; --slate-d: #475569;
+      --amber:  #f59e0b;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', 'Segoe UI', sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ─────────────────────────────────────── */
+    .hdr {
+      position: sticky; top: 0; z-index: 200;
+      background: linear-gradient(135deg, #1e3a8a, #1d4ed8);
+      color: #fff;
+      padding: 11px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
+    }
+    .hdr h1 { font-size: 1.05rem; font-weight: 700; }
+    .hdr-stats { display: flex; gap: 7px; }
+    .badge {
+      background: rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.2);
+      padding: 3px 11px; border-radius: 20px;
+      font-size: .78rem; font-weight: 500;
+    }
+    .badge strong { font-weight: 700; }
+
+    /* ── LAYOUT ──────────────────────────────────────── */
+    .main { max-width: 980px; margin: 0 auto; padding: 16px; }
+
+    /* ── CARD ────────────────────────────────────────── */
+    .card {
+      background: #fff; border-radius: 14px;
+      padding: 16px 18px; margin-bottom: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.07), 0 4px 12px rgba(0,0,0,.04);
+    }
+    .card-hd {
+      font-size: .8rem; font-weight: 700; color: #94a3b8;
+      text-transform: uppercase; letter-spacing: .05em;
+      margin-bottom: 12px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 8px;
+    }
+
+    /* ── BUTTONS ─────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+      padding: 8px 16px; border-radius: 8px; border: none;
+      cursor: pointer; font-size: .875rem; font-weight: 600;
+      transition: background .1s, transform .08s; white-space: nowrap;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-blue   { background: var(--blue);  color: #fff; }
+    .btn-blue:hover   { background: var(--blue-d); }
+    .btn-green  { background: var(--green); color: #fff; }
+    .btn-green:hover  { background: var(--green-d); }
+    .btn-red    { background: var(--red);   color: #fff; }
+    .btn-red:hover    { background: var(--red-d); }
+    .btn-ghost  { background: #f1f5f9; color: var(--slate-d); border: 1px solid #e2e8f0; }
+    .btn-ghost:hover  { background: #e2e8f0; }
+    .btn-sm     { padding: 5px 11px; font-size: .8rem; }
+    .btn-xs     { padding: 3px 8px;  font-size: .75rem; border-radius: 6px; }
+
+    /* ── FORM ────────────────────────────────────────── */
+    textarea, input[type="number"], input[type="text"] {
+      border: 1.5px solid #e2e8f0; border-radius: 8px;
+      padding: 8px 12px; font-size: .875rem; font-family: inherit;
+      background: #fff; color: #1e293b;
+      transition: border-color .12s;
+    }
+    textarea:focus, input:focus { outline: none; border-color: var(--blue); }
+    textarea { resize: vertical; }
+
+    /* ── MEMBER (회원) CHIPS ─────────────────────────── */
+    /* 행 높이 36px 고정 + 12명(한 페이지) 기준 min-height — 페이지 전환 시 높이 출렁임 방지 */
+    .member-grid {
+      display: grid; grid-template-columns: 1fr; gap: 7px;
+      grid-auto-rows: 36px;
+      min-height: calc(12 * 36px + 11 * 7px); /* 모바일: 1열 × 12행 */
+      align-items: stretch;
+    }
+    @media (min-width: 768px) {
+      .member-grid {
+        grid-template-columns: 1fr 1fr 1fr;
+        min-height: calc(4 * 36px + 3 * 7px); /* 데스크탑: 3열 × 4행 */
+      }
+    }
+
+    /* ── PAGER (회원 전체 · 출석 명단 공용) ───────────── */
+    .pager { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin-top: 10px; }
+    .pager:empty { display: none; }
+    .pager button {
+      min-width: 30px; height: 30px; padding: 0 6px;
+      border: 1px solid #e2e8f0; background: #fff; border-radius: 6px;
+      font-size: .8rem; color: var(--slate-d); cursor: pointer;
+      transition: all .1s;
+    }
+    .pager button:hover:not(:disabled):not(.active) { background: #f1f5f9; }
+    .pager button.active { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 700; cursor: default; }
+    .pager button:disabled { opacity: .35; cursor: default; }
+
+    /* ── 코트 선택 모달 (출석 명단 클릭 배치) ─────────── */
+    .cp-list { display: flex; flex-direction: column; gap: 6px; width: 100%; margin: 4px 0 14px; }
+    .cp-court {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px;
+      background: #fff; cursor: pointer; font-size: .9rem; transition: all .1s;
+    }
+    .cp-court:hover:not(:disabled) { border-color: var(--blue); background: #eff6ff; }
+    .cp-court:disabled { opacity: .45; cursor: default; }
+    .cp-cnt { font-size: .78rem; color: #64748b; font-weight: 700; }
+    .mem-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      border-radius: 20px; padding: 6px 12px;
+      font-size: .85rem; cursor: pointer; user-select: none;
+      transition: all .15s; font-weight: 500;
+      border: 1.5px solid transparent;
+    }
+    /* 성별 색상만 표시 — 상태는 라벨(출석·게임중)로 */
+    .mem-chip.male   { background: #e0f2fe; border-color: #7dd3fc; }
+    .mem-chip.female { background: #fce7f3; border-color: #f9a8d4; }
+    .mem-chip:hover  { filter: brightness(.95); }
+
+    /* 상태 라벨 */
+    .tag {
+      border-radius: 9px; padding: 1px 7px; font-size: .68rem; font-weight: 700;
+      flex-shrink: 0; line-height: 1.5;
+    }
+    .tag.attend { background: #dcfce7; color: #15803d; }
+    .tag.gaming { background: #fef3c7; color: #b45309; }
+    .mem-chip-del {
+      background: none; border: none; cursor: pointer;
+      color: #94a3b8; font-size: .75rem; padding: 0 0 0 2px;
+      line-height: 1; border-radius: 3px;
+    }
+    .mem-chip-del:hover { color: var(--red); }
+    .mem-gender {
+      border-radius: 10px; padding: 1px 7px; font-size: .72rem; font-weight: 700;
+      cursor: pointer; line-height: 1.4; flex-shrink: 0; border: 1.5px solid transparent;
+      transition: opacity .1s;
+    }
+    .mem-gender:hover { opacity: .75; }
+    .mem-gender.m { background: #e0f2fe; border-color: #7dd3fc; color: #0369a1; }
+    .mem-gender.f { background: #fce7f3; border-color: #f9a8d4; color: #be185d; }
+    .member-empty { color: #cbd5e1; font-size: .875rem; }
+
+    /* ── MODAL GENDER TOGGLE ─────────────────────────── */
+    .modal-gender-row {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+    }
+    .modal-gender-label { font-size: .85rem; color: #64748b; font-weight: 600; }
+    .gender-toggle { display: flex; gap: 5px; }
+    .gender-btn {
+      padding: 5px 14px; border-radius: 20px; border: 1.5px solid #e2e8f0;
+      background: #f8fafc; color: #94a3b8; font-size: .83rem; font-weight: 600;
+      cursor: pointer; transition: all .12s;
+    }
+    .gender-btn.m.active { background: #e0f2fe; border-color: #7dd3fc; color: #0369a1; }
+    .gender-btn.f.active { background: #fce7f3; border-color: #f9a8d4; color: #be185d; }
+    .gender-btn:not(.active):hover { background: #f1f5f9; }
+
+    /* ── GRADE ──────────────────────────────────────── */
+    .grade-btn {
+      padding: 5px 10px; border-radius: 20px; border: 1.5px solid #e2e8f0;
+      background: #f8fafc; color: #94a3b8; font-size: .83rem; font-weight: 700;
+      cursor: pointer; transition: all .12s;
+    }
+    .grade-btn:not(.active):hover { background: #f1f5f9; }
+    .grade-btn.active { border-color: #6366f1; background: #eef2ff; color: #3730a3; }
+    .grade-tag {
+      font-size: .68rem; font-weight: 800; padding: 1px 5px; border-radius: 8px;
+      flex-shrink: 0; background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0;
+    }
+    .mem-grade {
+      border-radius: 10px; padding: 1px 7px; font-size: .72rem; font-weight: 800;
+      cursor: pointer; line-height: 1.4; flex-shrink: 0; border: 1.5px solid #e2e8f0;
+      background: #f8fafc; color: #64748b; transition: opacity .1s;
+    }
+    .mem-grade:hover { opacity: .75; }
+
+    /* ── WAITING AREA ────────────────────────────────── */
+    .wait-area {
+      display: grid; grid-template-columns: 1fr; gap: 6px;
+      grid-auto-rows: 36px;
+      min-height: calc(12 * 36px + 11 * 6px + 20px); /* 모바일: 1열 × 12행 + 패딩·테두리 */
+      padding: 8px; border-radius: 10px;
+      border: 2px dashed #e2e8f0; transition: all .12s;
+      align-items: stretch;
+    }
+    @media (min-width: 768px) {
+      .wait-area {
+        grid-template-columns: 1fr 1fr 1fr;
+        min-height: calc(4 * 36px + 3 * 6px + 20px); /* 데스크탑: 3열 × 4행 */
+      }
+    }
+    .wait-area.drag-over { border-color: var(--blue); background: #eff6ff; }
+
+    /* participant chip */
+    .pc {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: #eff6ff; border: 1.5px solid #bfdbfe;
+      border-radius: 20px; padding: 5px 7px 5px 11px;
+      font-size: .85rem; cursor: grab; user-select: none;
+      transition: border-color .12s, opacity .12s;
+    }
+    .pc:hover        { border-color: var(--blue); }
+    .pc.dragging     { opacity: .35; }
+    .pc, .tc { -webkit-touch-callout: none; } /* iOS 길게 누르기 메뉴 방지 (터치 드래그용) */
+    .touch-ghost {
+      position: fixed; z-index: 9999; pointer-events: none;
+      opacity: .9; transform: translate(-50%, -70%);
+      box-shadow: 0 8px 24px rgba(0,0,0,.25); margin: 0;
+    }
+    .pc.male         { background: #e0f2fe; border-color: #7dd3fc; }
+    .pc.female       { background: #fce7f3; border-color: #f9a8d4; }
+    .pc.resting      { background: #f8fafc; border-color: #cbd5e1; color: #94a3b8; text-decoration: line-through; cursor: default; }
+    .pc-cnt {
+      background: var(--blue); color: #fff;
+      border-radius: 10px; padding: 1px 7px;
+      font-size: .72rem; font-weight: 700; min-width: 20px; text-align: center;
+    }
+    .pc.carry .pc-cnt { background: var(--amber); }
+    .pc.gaming        { cursor: default; }
+    .pc-btn {
+      background: none; border: none; cursor: pointer;
+      color: #94a3b8; font-size: .8rem;
+      padding: 1px 3px; border-radius: 4px; line-height: 1;
+    }
+    .pc-btn:hover { color: var(--slate-d); background: rgba(0,0,0,.06); }
+    .pc-spacer { flex: 1; }
+    .empty-msg { color: #cbd5e1; font-size: .875rem; display: flex; align-items: center; grid-column: 1 / -1; }
+
+    /* ── TEAM BUILD ROW ──────────────────────────────── */
+    .build-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .build-row label { color: var(--slate-d); font-size: .9rem; }
+
+    /* ── CUSTOM SELECT ───────────────────────────────── */
+    .cs-wrap { position: relative; }
+    .cs-trigger {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px;
+      padding: 7px 12px; font-size: .9rem; font-weight: 600; color: #1e293b;
+      cursor: pointer; transition: all .12s; min-width: 72px;
+    }
+    .cs-trigger:hover { border-color: var(--blue); background: #eff6ff; color: var(--blue); }
+    .cs-trigger.open  { border-color: var(--blue); background: #eff6ff; color: var(--blue); }
+    .cs-arrow { font-size: .65rem; color: #94a3b8; transition: transform .15s; flex-shrink: 0; }
+    .cs-trigger.open .cs-arrow { transform: rotate(180deg); }
+    .cs-dropdown {
+      display: none; position: absolute; top: calc(100% + 5px); left: 50%;
+      transform: translateX(-50%);
+      background: #fff; border: 1.5px solid #e2e8f0; border-radius: 12px;
+      box-shadow: 0 8px 28px rgba(0,0,0,.13); z-index: 300;
+      overflow: hidden; width: 80px;
+    }
+    .cs-dropdown.open { display: block; animation: cs-in .1s ease; }
+    @keyframes cs-in {
+      from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    .cs-list { max-height: 220px; overflow-y: auto; padding: 4px; }
+    .cs-list::-webkit-scrollbar { width: 4px; }
+    .cs-list::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+    .cs-option {
+      padding: 7px 0; border-radius: 7px; font-size: .875rem;
+      cursor: pointer; transition: background .1s; text-align: center;
+      font-weight: 500; color: #475569;
+    }
+    .cs-option:hover    { background: #eff6ff; color: var(--blue); }
+    .cs-option.selected { background: var(--blue); color: #fff; font-weight: 700; }
+
+    /* ── COURTS ──────────────────────────────────────── */
+    .courts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 10px;
+    }
+    .court-card {
+      border: 2px solid #e2e8f0; border-radius: 12px;
+      padding: 12px; transition: border-color .15s;
+    }
+    .court-card.active   { border-color: #93c5fd; }
+    .court-card.disabled { opacity: .55; background: #f8fafc; }
+    .court-top {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 8px; margin-bottom: 10px;
+    }
+    .court-name {
+      font-weight: 700; font-size: .9rem; border: none; background: transparent;
+      color: #1e293b; outline: none; flex: 1; min-width: 0;
+      border-bottom: 1.5px solid transparent; padding: 2px 0;
+    }
+    .court-name:focus { border-bottom-color: var(--blue); }
+    .drop-zone {
+      min-height: 46px; display: flex; flex-wrap: wrap; gap: 5px;
+      padding: 8px; border-radius: 8px;
+      border: 2px dashed #e2e8f0; transition: all .12s;
+    }
+    .drop-zone.drag-over { border-color: var(--blue); background: #eff6ff; }
+    .drop-zone.full { border-style: solid; border-color: #93c5fd; background: #f0f9ff; }
+    .tc {
+      background: #dbeafe; border: 1px solid #93c5fd;
+      border-radius: 16px; padding: 4px 10px;
+      font-size: .82rem; cursor: grab; user-select: none;
+      transition: background .1s;
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    .tc.male   { background: #e0f2fe; border-color: #7dd3fc; }
+    .tc.female { background: #fce7f3; border-color: #f9a8d4; }
+    .tc:hover         { filter: brightness(.94); }
+    .tc.dragging      { opacity: .35; }
+
+    /* ── GRADE PICKER ────────────────────────────────── */
+    #grade-picker {
+      position: fixed; z-index: 700;
+      background: #fff; border: 1.5px solid #e2e8f0; border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.18);
+      display: none; flex-direction: column; overflow: hidden; min-width: 58px;
+    }
+    #grade-picker.open { display: flex; }
+    .gp-item {
+      padding: 9px 20px; font-size: .875rem; font-weight: 700;
+      cursor: pointer; text-align: center; color: #475569;
+    }
+    .gp-item:hover { background: #f1f5f9; }
+    .gp-item.current { background: #eef2ff; color: #3730a3; }
+    .court-btn   { margin-top: 8px; display: flex; gap: 6px; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* ── QUEUE ───────────────────────────────────────── */
+    .q-list { display: flex; flex-direction: column; gap: 8px; }
+    .q-team {
+      display: flex; align-items: center; gap: 8px;
+      background: #f8fafc; border: 1px solid #e2e8f0;
+      border-radius: 8px; padding: 8px 12px;
+    }
+    .q-num {
+      background: var(--slate); color: #fff;
+      border-radius: 6px; padding: 2px 8px;
+      font-size: .75rem; font-weight: 700; flex-shrink: 0;
+    }
+    .q-members { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; }
+
+    /* ── MODAL ───────────────────────────────────────── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,0,0,.4); backdrop-filter: blur(2px);
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: #fff; border-radius: 16px;
+      padding: 24px; width: 360px; max-width: calc(100vw - 32px);
+      box-shadow: 0 20px 60px rgba(0,0,0,.2);
+      animation: modal-in .15s ease;
+    }
+    @keyframes modal-in {
+      from { opacity: 0; transform: translateY(-12px) scale(.97); }
+      to   { opacity: 1; transform: none; }
+    }
+    .modal-title {
+      font-size: 1rem; font-weight: 700; margin-bottom: 6px;
+    }
+    .modal-desc {
+      font-size: .83rem; color: #94a3b8; margin-bottom: 14px;
+    }
+    .modal-input {
+      width: 100%; margin-bottom: 14px; box-sizing: border-box;
+      border: 1.5px solid #e2e8f0; border-radius: 10px;
+      padding: 10px 12px; font-size: .875rem; font-family: inherit;
+    }
+    .modal-input:focus { outline: none; border-color: var(--blue); }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+    /* ── CUSTOM DIALOG ───────────────────────────────── */
+    .dlg-overlay {
+      display: none; position: fixed; inset: 0; z-index: 600;
+      background: rgba(15,23,42,.5); backdrop-filter: blur(3px);
+      align-items: center; justify-content: center;
+    }
+    .dlg-overlay.open { display: flex; }
+    .dlg-box {
+      background: #fff; border-radius: 20px;
+      padding: 28px 24px 22px; width: 380px; max-width: calc(100vw - 32px);
+      box-shadow: 0 24px 64px rgba(0,0,0,.18);
+      animation: dlg-in .14s ease;
+      display: flex; flex-direction: column; align-items: center; text-align: center;
+    }
+    @keyframes dlg-in {
+      from { opacity: 0; transform: scale(.92); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .dlg-icon {
+      width: 54px; height: 54px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; margin-bottom: 16px; flex-shrink: 0;
+    }
+    .dlg-icon.info    { background: #eff6ff; }
+    .dlg-icon.warning { background: #fffbeb; }
+    .dlg-icon.danger  { background: #fef2f2; }
+    .dlg-title { font-size: .975rem; font-weight: 700; color: #1e293b; margin-bottom: 7px; }
+    .dlg-msg   { font-size: .845rem; color: #64748b; line-height: 1.6; margin-bottom: 22px; white-space: pre-line; }
+    .dlg-actions { display: flex; gap: 8px; width: 100%; }
+    .dlg-actions .btn { flex: 1; justify-content: center; }
+    .btn-amber       { background: #f59e0b; color: #fff; }
+    .btn-amber:hover { background: #d97706; }
+
+    /* ── MEMBERS MODAL ───────────────────────────────── */
+    .members-box {
+      width: min(900px, calc(100vw - 32px)); max-height: min(92vh, 900px);
+      display: flex; flex-direction: column;
+    }
+    .members-hd {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 8px; margin-bottom: 14px; flex-shrink: 0;
+    }
+    .members-box .member-grid {
+      /* 21명 3열 = 7행: 7×36px + 6×7px 간격 */
+      min-height: calc(7 * 36px + 6 * 7px) !important;
+      flex: 1; overflow-y: auto;
+    }
+    .modal-close-btn {
+      background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px;
+      color: #64748b; cursor: pointer; font-size: .85rem;
+      padding: 5px 9px; line-height: 1;
+    }
+    .modal-close-btn:hover { background: #e2e8f0; }
+
+    /* ── GUEST INPUT ROW ─────────────────────────────── */
+    .guest-row {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 10px; flex-wrap: wrap;
+    }
+    .guest-row input[type="text"] { flex: 1; min-width: 120px; }
+    .tag.guest { background: #f3e8ff; color: #7c3aed; }
+  </style>
+</head>
+<body>
+
+<header class="hdr">
+  <h1>🏸 배드민턴</h1>
+  <div class="hdr-stats">
+    <span class="badge">전체 <strong id="h-total">0</strong>명</span>
+    <span class="badge">대기 <strong id="h-wait">0</strong>명</span>
+    <span class="badge">코트 <strong id="h-courts">0</strong>판</span>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- 출석 명단 -->
+  <div class="card">
+    <div class="card-hd">
+      출석 명단
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        <button class="btn btn-blue" onclick="openMembersModal()">회원 불러오기</button>
+        <button class="btn btn-ghost" onclick="openGuestModal()">게스트 등록</button>
+        <button class="btn btn-ghost" onclick="resetRecords()">기록 초기화</button>
+        <button class="btn btn-ghost" onclick="resetAttendance()">전체 초기화</button>
+      </div>
+    </div>
+    <div class="wait-area" id="wait-area"
+         ondragover="waDragOver(event)"
+         ondragleave="waDragLeave(event)"
+         ondrop="waDrop(event)">
+      <span class="empty-msg" id="wait-empty">참석한 회원이 없습니다</span>
+    </div>
+    <div class="pager" id="wait-pager"></div>
+  </div>
+
+  <!-- 코트 -->
+  <div class="card">
+    <div class="card-hd">
+      코트
+      <div class="build-row">
+        <label>코트 수</label>
+        <div class="cs-wrap">
+          <button class="cs-trigger" id="cs-trigger" onclick="toggleCourtSelect()">
+            <span id="cs-value">2</span>
+            <span class="cs-arrow">▼</span>
+          </button>
+          <div class="cs-dropdown" id="cs-dropdown">
+            <div class="cs-list" id="cs-list"></div>
+          </div>
+        </div>
+        <button class="btn btn-green" onclick="buildTeams()">🎯 팀 짜기</button>
+      </div>
+    </div>
+    <div class="courts-grid" id="courts-grid"></div>
+  </div>
+
+  <!-- 대기 팀 -->
+  <div class="card" id="queue-card" style="display:none;">
+    <div class="card-hd">대기 팀</div>
+    <div class="q-list" id="queue-list"></div>
+  </div>
+
+</main>
+
+<!-- 게스트 등록 모달 -->
+<div class="modal-overlay" id="guest-overlay" onclick="if(event.target===this)closeGuestModal()">
+  <div class="modal-box">
+    <div class="modal-title">게스트 등록</div>
+    <div class="modal-gender-row">
+      <span class="modal-gender-label">성별</span>
+      <div class="gender-toggle">
+        <button id="gbtn-guest-m" class="gender-btn m active" onclick="setGuestGender('M')">남</button>
+        <button id="gbtn-guest-f" class="gender-btn f" onclick="setGuestGender('F')">여</button>
+      </div>
+    </div>
+    <div class="modal-gender-row">
+      <span class="modal-gender-label">급수</span>
+      <div class="gender-toggle">
+        <button id="gbtn-guest-A" class="grade-btn" onclick="setGuestGrade('A')">A</button>
+        <button id="gbtn-guest-B" class="grade-btn" onclick="setGuestGrade('B')">B</button>
+        <button id="gbtn-guest-C" class="grade-btn active" onclick="setGuestGrade('C')">C</button>
+        <button id="gbtn-guest-D" class="grade-btn" onclick="setGuestGrade('D')">D</button>
+        <button id="gbtn-guest-E" class="grade-btn" onclick="setGuestGrade('E')">E</button>
+      </div>
+    </div>
+    <input class="modal-input" id="guest-input" type="text" placeholder="이름을 입력하세요">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeGuestModal()">취소</button>
+      <button class="btn btn-blue" onclick="submitGuest()">등록</button>
+    </div>
+  </div>
+</div>
+
+<!-- 회원 전체 모달 -->
+<div class="modal-overlay" id="members-overlay" onclick="onMembersOverlayClick(event)">
+  <div class="modal-box members-box">
+    <div class="members-hd">
+      <span class="modal-title">회원</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-blue" onclick="openModal()">회원 등록</button>
+        <button class="modal-close-btn" onclick="closeMembersModal()">✕</button>
+      </div>
+    </div>
+    <div class="member-grid" id="member-grid">
+      <span class="member-empty">등록된 회원이 없습니다.</span>
+    </div>
+    <div class="pager" id="member-pager"></div>
+  </div>
+</div>
+
+<!-- 코트 선택 모달 (출석 명단 클릭 배치) -->
+<div class="dlg-overlay" id="cp-overlay" onclick="if (event.target === this) closeCourtPick()">
+  <div class="dlg-box">
+    <div class="dlg-title">코트 배치</div>
+    <div class="dlg-msg" id="cp-name"></div>
+    <div class="cp-list" id="cp-list"></div>
+    <div class="dlg-actions">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeCourtPick()">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- 급수 선택 피커 -->
+<div id="grade-picker"></div>
+
+<!-- 커스텀 다이얼로그 -->
+<div class="dlg-overlay" id="dlg-overlay">
+  <div class="dlg-box">
+    <div class="dlg-icon" id="dlg-icon"></div>
+    <div class="dlg-title" id="dlg-title"></div>
+    <div class="dlg-msg"   id="dlg-msg"></div>
+    <div class="dlg-actions" id="dlg-actions"></div>
+  </div>
+</div>
+
+<!-- 회원 등록 모달 -->
+<div class="modal-overlay" id="modal-overlay" onclick="onOverlayClick(event)">
+  <div class="modal-box">
+    <div class="modal-title">회원 등록</div>
+    <div class="modal-gender-row">
+      <span class="modal-gender-label">성별</span>
+      <div class="gender-toggle">
+        <button id="gbtn-m" class="gender-btn m active" onclick="setModalGender('M')">남</button>
+        <button id="gbtn-f" class="gender-btn f" onclick="setModalGender('F')">여</button>
+      </div>
+    </div>
+    <div class="modal-gender-row">
+      <span class="modal-gender-label">급수</span>
+      <div class="gender-toggle">
+        <button id="gbtn-A" class="grade-btn" onclick="setModalGrade('A')">A</button>
+        <button id="gbtn-B" class="grade-btn" onclick="setModalGrade('B')">B</button>
+        <button id="gbtn-C" class="grade-btn active" onclick="setModalGrade('C')">C</button>
+        <button id="gbtn-D" class="grade-btn" onclick="setModalGrade('D')">D</button>
+        <button id="gbtn-E" class="grade-btn" onclick="setModalGrade('E')">E</button>
+      </div>
+    </div>
+    <input class="modal-input" id="modal-input" type="text" placeholder="이름을 입력하세요">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">취소</button>
+      <button class="btn btn-blue" onclick="submitModal()">등록</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════
+let registry   = {};       // { name → { playedCount } }
+let waiting    = [];       // string[]  — 대기 중 (코트/큐 제외)
+let courts     = [];       // [{ id, name, team: string[]|null }]
+let teamQueue  = [];       // string[][]
+let lastSig    = {};       // { name → "A|B|C|D" }
+let carry      = [];       // 우선 대기 (이전 라운드 잔여)
+let restSet    = new Set();
+let savedNames = [];       // 전체 회원 목록
+let disabled   = new Set();// 비활성 코트 id (세션 전용)
+
+let drag = null;
+let modalGender = 'M';
+let modalGrade  = 'C';
+let guestGender = 'M';
+let guestGrade  = 'C';
+let guests = new Set(); // 게스트: waiting에 있지만 savedNames에 없는 임시 참석자
+
+// ═══════════════════════════════════════════════════
+//  STORAGE
+// ═══════════════════════════════════════════════════
+const KEY = 'badminton_state_v1';
+
+function saveState() {
+  localStorage.setItem(KEY, JSON.stringify({
+    registry, waiting, courts, teamQueue,
+    lastSig, carry, rest: [...restSet], savedNames, guests: [...guests]
+  }));
+}
+
+function loadState() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (!s) return;
+    registry   = s.registry   || {};
+    waiting    = s.waiting    || [];
+    courts     = s.courts     || [];
+    teamQueue  = s.teamQueue  || [];
+    lastSig    = s.lastSig    || {};
+    carry      = s.carry      || [];
+    restSet    = new Set(s.rest || []);
+    savedNames = s.savedNames || [];
+    guests     = new Set(s.guests || []);
+    if (courts.length) courtCountVal = courts.length;
+  } catch (_) {}
+}
+
+// ═══════════════════════════════════════════════════
+//  COURT INIT
+// ═══════════════════════════════════════════════════
+function initCourts(n) {
+  courts = Array.from({length: n}, (_, i) => ({id: i+1, name:`코트 ${i+1}`, team: null}));
+}
+
+let courtCountVal = 2;
+
+function toggleCourtSelect() {
+  const trigger  = document.getElementById('cs-trigger');
+  const dropdown = document.getElementById('cs-dropdown');
+  const isOpen   = dropdown.classList.contains('open');
+  trigger.classList.toggle('open', !isOpen);
+  dropdown.classList.toggle('open', !isOpen);
+  if (!isOpen) {
+    const selected = document.querySelector('.cs-option.selected');
+    if (selected) selected.scrollIntoView({block: 'center'});
+  }
+}
+
+function selectCourt(n) {
+  courtCountVal = n;
+  document.getElementById('cs-value').textContent = n;
+  document.getElementById('cs-trigger').classList.remove('open');
+  document.getElementById('cs-dropdown').classList.remove('open');
+  document.querySelectorAll('.cs-option').forEach(el =>
+    el.classList.toggle('selected', +el.dataset.val === n)
+  );
+  updateCourtCount();
+}
+
+function initCourtSelect(current) {
+  const list = document.getElementById('cs-list');
+  list.innerHTML = '';
+  for (let i = 1; i <= 20; i++) {
+    const opt = document.createElement('div');
+    opt.className = 'cs-option' + (i === current ? ' selected' : '');
+    opt.dataset.val = i;
+    opt.textContent = i;
+    opt.onclick = () => selectCourt(i);
+    list.appendChild(opt);
+  }
+  document.getElementById('cs-value').textContent = current;
+  courtCountVal = current;
+}
+
+document.addEventListener('click', e => {
+  if (!document.getElementById('cs-trigger').contains(e.target)) {
+    document.getElementById('cs-trigger').classList.remove('open');
+    document.getElementById('cs-dropdown').classList.remove('open');
+  }
+  // grade picker: 피커 바깥 또는 mem-grade가 아닌 곳 클릭 시 닫기
+  if (gradePickerTarget !== null &&
+      !e.target.closest('#grade-picker') &&
+      !e.target.classList.contains('mem-grade')) {
+    closeGradePicker();
+  }
+});
+
+function updateCourtCount() {
+  const n = courtCountVal;
+  while (courts.length < n) {
+    const id = courts.length + 1;
+    courts.push({id, name:`코트 ${id}`, team: null});
+  }
+  while (courts.length > n) {
+    const c = courts.pop();
+    if (c.team) c.team.forEach(nm => { if (!waiting.includes(nm)) waiting.push(nm); });
+  }
+  // 셀렉트 UI 동기화
+  document.getElementById('cs-value').textContent = n;
+  document.querySelectorAll('.cs-option').forEach(el =>
+    el.classList.toggle('selected', +el.dataset.val === n)
+  );
+  saveState(); render();
+}
+
+// ═══════════════════════════════════════════════════
+//  MEMBERS (회원)
+// ═══════════════════════════════════════════════════
+function openModal() {
+  document.getElementById('modal-input').value = '';
+  setModalGender('M');
+  setModalGrade('C');
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('modal-input').focus(), 50);
+}
+
+function setModalGender(g) {
+  modalGender = g;
+  document.getElementById('gbtn-m').classList.toggle('active', g === 'M');
+  document.getElementById('gbtn-f').classList.toggle('active', g === 'F');
+}
+
+function setModalGrade(g) {
+  modalGrade = g;
+  ['A','B','C','D','E'].forEach(k =>
+    document.getElementById('gbtn-' + k).classList.toggle('active', k === g)
+  );
+}
+
+function openMembersModal() {
+  document.getElementById('members-overlay').classList.add('open');
+}
+
+function closeMembersModal() {
+  document.getElementById('members-overlay').classList.remove('open');
+}
+
+function onMembersOverlayClick(e) {
+  if (e.target === document.getElementById('members-overlay')) closeMembersModal();
+}
+
+function openGuestModal() {
+  document.getElementById('guest-input').value = '';
+  setGuestGender('M');
+  setGuestGrade('C');
+  document.getElementById('guest-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('guest-input').focus(), 50);
+}
+
+function closeGuestModal() {
+  document.getElementById('guest-overlay').classList.remove('open');
+}
+
+function setGuestGender(g) {
+  guestGender = g;
+  document.getElementById('gbtn-guest-m').classList.toggle('active', g === 'M');
+  document.getElementById('gbtn-guest-f').classList.toggle('active', g === 'F');
+}
+
+function setGuestGrade(g) {
+  guestGrade = g;
+  ['A','B','C','D','E'].forEach(k =>
+    document.getElementById('gbtn-guest-' + k).classList.toggle('active', k === g)
+  );
+}
+
+function submitGuest() {
+  const name = document.getElementById('guest-input').value.trim();
+  if (!name) { closeGuestModal(); return; }
+  if (waiting.includes(name) || onCourt(name) || inQueue(name)) { closeGuestModal(); return; }
+  if (!registry[name]) registry[name] = {playedCount: 0};
+  registry[name].gender = guestGender;
+  registry[name].grade  = guestGrade;
+  if (!savedNames.includes(name)) guests.add(name);
+  waiting.push(name);
+  closeGuestModal();
+  saveState(); render();
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function onOverlayClick(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+
+function submitModal() {
+  const name = document.getElementById('modal-input').value.trim();
+  if (!name) { closeModal(); return; }
+  if (!savedNames.includes(name)) savedNames.push(name);
+  if (!registry[name]) registry[name] = {playedCount: 0};
+  registry[name].gender = modalGender;
+  registry[name].grade  = modalGrade;
+  guests.delete(name); // 게스트였으면 회원으로 승격
+  closeModal();
+  saveState(); render();
+}
+
+function toggleGender(name) {
+  if (!registry[name]) registry[name] = {playedCount: 0};
+  registry[name].gender = registry[name].gender === 'F' ? 'M' : 'F';
+  saveState(); render();
+}
+
+let gradePickerTarget = null;
+
+function openGradePicker(name, anchorEl) {
+  closeGradePicker();
+  gradePickerTarget = name;
+  const picker = document.getElementById('grade-picker');
+  const cur = registry[name]?.grade || 'E';
+  picker.innerHTML = ['A','B','C','D','E'].map(g =>
+    `<div class="gp-item${g === cur ? ' current' : ''}" data-g="${g}">${g}</div>`
+  ).join('');
+
+  // 앵커 아래 또는 위에 위치
+  const rect = anchorEl.getBoundingClientRect();
+  picker.classList.add('open');
+  const ph = picker.offsetHeight;
+  const pw = picker.offsetWidth;
+  let top  = rect.bottom + 4;
+  let left = rect.left;
+  if (top + ph > window.innerHeight - 8) top = rect.top - ph - 4;
+  if (left + pw > window.innerWidth  - 8) left = window.innerWidth - pw - 8;
+  picker.style.top  = Math.max(8, top)  + 'px';
+  picker.style.left = Math.max(8, left) + 'px';
+
+  picker.querySelectorAll('.gp-item').forEach(item => {
+    item.addEventListener('click', e => {
+      e.stopPropagation();
+      if (!registry[gradePickerTarget]) registry[gradePickerTarget] = {playedCount: 0};
+      registry[gradePickerTarget].grade = item.dataset.g;
+      closeGradePicker();
+      saveState(); render();
+    });
+  });
+}
+
+function closeGradePicker() {
+  document.getElementById('grade-picker').classList.remove('open');
+  gradePickerTarget = null;
+}
+
+function deleteMember(name) {
+  savedNames = savedNames.filter(n => n !== name);
+  guests.delete(name);
+  waiting = waiting.filter(n => n !== name);
+  carry   = carry.filter(n => n !== name);
+  restSet.delete(name);
+  courts.forEach(c => {
+    if (c.team) { c.team = c.team.filter(n => n !== name); if (!c.team.length) c.team = null; }
+  });
+  teamQueue = teamQueue.map(t => t.filter(n => n !== name)).filter(t => t.length);
+  saveState(); render();
+}
+
+function toggleAttend(name) {
+  // 코트나 큐에 있으면 조작 불가
+  if (onCourt(name) || inQueue(name)) return;
+
+  if (waiting.includes(name)) {
+    // 참석 취소
+    waiting = waiting.filter(n => n !== name);
+    carry   = carry.filter(n => n !== name);
+    restSet.delete(name);
+  } else {
+    // 참석 처리
+    waiting.push(name);
+    if (!registry[name]) registry[name] = {playedCount: 0};
+  }
+  saveState(); render();
+}
+
+function onCourt(name) { return courts.some(c => c.team?.includes(name)); }
+function inQueue(name) { return teamQueue.some(t => t.includes(name)); }
+
+// ═══════════════════════════════════════════════════
+//  WAITING (출석 명단)
+// ═══════════════════════════════════════════════════
+function removeParticipant(name) {
+  waiting = waiting.filter(n => n !== name);
+  carry   = carry.filter(n => n !== name);
+  restSet.delete(name);
+  guests.delete(name);
+  saveState(); render();
+}
+
+function toggleRest(name) {
+  restSet.has(name) ? restSet.delete(name) : restSet.add(name);
+  saveState(); render();
+}
+
+async function resetRecords() {
+  if (!await showDialog({type: 'warning', title: '경기 기록 초기화', message: '코트와 대기 팀도 정리되고\n참석 인원은 유지됩니다.', confirmText: '초기화'})) return;
+  courts.forEach(c => {
+    if (c.team) { c.team.forEach(n => { if (!waiting.includes(n)) waiting.push(n); }); c.team = null; }
+  });
+  teamQueue.forEach(t => t.forEach(n => { if (!waiting.includes(n)) waiting.push(n); }));
+  teamQueue = []; carry = []; lastSig = {}; restSet.clear(); disabled.clear();
+  Object.keys(registry).forEach(n => { registry[n].playedCount = 0; });
+  saveState(); render();
+}
+
+async function resetAttendance() {
+  if (!await showDialog({type: 'warning', title: '전체 초기화', message: '기록을 초기화하고 출석 명단을 비웁니다.\n회원 목록은 유지됩니다.', confirmText: '초기화'})) return;
+  courts.forEach(c => { c.team = null; });
+  waiting = []; teamQueue = []; carry = []; lastSig = {}; restSet.clear(); disabled.clear(); guests.clear();
+  Object.keys(registry).forEach(n => { registry[n].playedCount = 0; });
+  saveState(); render();
+}
+
+async function clearAll() {
+  if (!await showDialog({type: 'warning', title: '전체 초기화', message: '회원 목록은 유지됩니다.', confirmText: '초기화'})) return;
+  waiting=[]; teamQueue=[]; lastSig={};
+  carry=[]; restSet.clear(); disabled.clear();
+  Object.keys(registry).forEach(n => { registry[n].playedCount = 0; });
+  initCourts(courtCountVal);
+  saveState(); render();
+}
+
+// ═══════════════════════════════════════════════════
+//  TEAM BUILDING
+// ═══════════════════════════════════════════════════
+function weightedSample(pool, n) {
+  const result = [], rem = [...pool];
+  const count = Math.min(n, rem.length); // rem이 줄어도 목표 개수 고정
+  for (let i = 0; i < count; i++) {
+    const w = rem.map(nm => 1 / ((registry[nm]?.playedCount || 0) + 1));
+    const total = w.reduce((a, b) => a + b, 0);
+    let r = Math.random() * total, idx = 0;
+    for (let j = 0; j < w.length; j++) { r -= w[j]; if (r <= 0) { idx = j; break; } }
+    result.push(rem[idx]);
+    rem.splice(idx, 1);
+  }
+  return result;
+}
+
+function teamSig(team) { return [...team].sort().join('|'); }
+
+function isDuplicate(team) {
+  const s = teamSig(team);
+  return team.some(n => lastSig[n] === s);
+}
+
+function tryBreakDup(team, pool, genderFn) {
+  for (let i = 0; i < team.length; i++) {
+    for (let j = 0; j < pool.length; j++) {
+      // 성별 제약이 있으면 같은 성별끼리만 교체
+      if (genderFn && genderFn(pool[j]) !== genderFn(team[i])) continue;
+      const t = [...team]; t[i] = pool[j];
+      if (!isDuplicate(t)) return {team: t, out: team[i], in: pool[j]};
+    }
+  }
+  return null;
+}
+
+async function buildTeams() {
+  const avail = waiting.filter(n => !restSet.has(n));
+  if (avail.length < 4) {
+    await showAlert('인원 부족', `팀 구성에는 최소 4명이 필요합니다.\n현재 대기: ${avail.length}명`);
+    return;
+  }
+
+  const getGender = n => registry[n]?.gender === 'F' ? 'F' : 'M';
+  const getGrade  = n => registry[n]?.grade  || 'E';
+  const GRADES    = ['A','B','C','D','E'];
+
+  const mAvail = avail.filter(n => getGender(n) === 'M');
+  const fAvail = avail.filter(n => getGender(n) === 'F');
+
+  // 전체 팀 수를 최대화하는 (순수M, 순수F, 혼복) 조합 계산
+  function computeOptimal(M, F) {
+    let bestTotal = -1, candidates = [];
+    const maxC = Math.min(Math.floor(M / 2), Math.floor(F / 2));
+    for (let c = 0; c <= maxC; c++) {
+      const a = Math.floor((M - 2 * c) / 4);
+      const b = Math.floor((F - 2 * c) / 4);
+      const total = a + b + c;
+      if (total > bestTotal) { bestTotal = total; candidates = [{ a, b, c }]; }
+      else if (total === bestTotal) { candidates.push({ a, b, c }); }
+    }
+    if (candidates.length === 1) return candidates[0];
+    candidates.sort((x, y) => x.c - y.c);
+    if (Math.random() < 0.8) return candidates[0];
+    const rest = candidates.slice(1);
+    return rest[Math.floor(Math.random() * rest.length)];
+  }
+
+  const { a, b, c } = computeOptimal(mAvail.length, fAvail.length);
+
+  if (a + b + c === 0) {
+    await showAlert('구성 불가',
+      `현재 성비(남 ${mAvail.length} · 여 ${fAvail.length})로는 자동 팀 구성이 불가합니다.\n`
+      + `(남복·여복은 같은 성별 4명, 혼복은 남2+여2가 필요합니다)\n\n`
+      + `성비가 안 맞는 팀 구성은 직접 드래그해서 넣을 수 있습니다.`);
+    return;
+  }
+
+  // carry 플레이어 집합 (avail 내에서만)
+  const carrySet = new Set(carry.filter(n => avail.includes(n)));
+
+  // 성별별 급수-분류 풀 (각 bucket 내 carry 먼저)
+  function makeGradePools(players) {
+    const pools = {};
+    GRADES.forEach(g => {
+      const gp = players.filter(n => getGrade(n) === g);
+      pools[g] = [
+        ...gp.filter(n => carrySet.has(n)),
+        ...gp.filter(n => !carrySet.has(n))
+      ];
+    });
+    return pools;
+  }
+  const mPools = makeGradePools(mAvail);
+  const fPools = makeGradePools(fAvail);
+
+  function allFrom(pools) { return GRADES.flatMap(g => pools[g]); }
+
+  function removeFrom(players, pools) {
+    players.forEach(p => {
+      const g = getGrade(p);
+      const idx = pools[g].indexOf(p);
+      if (idx >= 0) pools[g].splice(idx, 1);
+      carrySet.delete(p);
+    });
+  }
+
+  // carry 우선, 부족하면 weighted sample로 n명 뽑기
+  function pickN(pool, n) {
+    if (n === 0) return [];
+    if (pool.length < n) return null;
+    const carries = pool.filter(p => carrySet.has(p));
+    const normals = pool.filter(p => !carrySet.has(p));
+    const picked  = carries.slice(0, Math.min(carries.length, n));
+    const need    = n - picked.length;
+    if (need > 0) picked.push(...weightedSample(normals, need));
+    return picked.length === n ? picked : null;
+  }
+
+  function buildOneTeam(nM, nF) {
+    let mPick = null, fPick = null;
+
+    // 1단계: 동일 급수 (AAAA)
+    for (const g of GRADES) {
+      if (mPools[g].length >= nM && fPools[g].length >= nF) {
+        const mp = pickN(mPools[g], nM);
+        const fp = pickN(fPools[g], nF);
+        if (mp && fp) {
+          removeFrom(mp, mPools); removeFrom(fp, fPools);
+          mPick = mp; fPick = fp; break;
+        }
+      }
+    }
+
+    // 2단계: 두 쌍 급수 (AABB)
+    if (!mPick) {
+      if (nM === 4 && nF === 0) {
+        outer2M: for (let i = 0; i < GRADES.length; i++) {
+          for (let j = i + 1; j < GRADES.length; j++) {
+            const [g1, g2] = [GRADES[i], GRADES[j]];
+            if (mPools[g1].length >= 2 && mPools[g2].length >= 2) {
+              const p1 = pickN(mPools[g1], 2), p2 = pickN(mPools[g2], 2);
+              if (p1 && p2) {
+                removeFrom([...p1, ...p2], mPools);
+                mPick = [...p1, ...p2]; fPick = []; break outer2M;
+              }
+            }
+          }
+        }
+      } else if (nF === 4 && nM === 0) {
+        outer2F: for (let i = 0; i < GRADES.length; i++) {
+          for (let j = i + 1; j < GRADES.length; j++) {
+            const [g1, g2] = [GRADES[i], GRADES[j]];
+            if (fPools[g1].length >= 2 && fPools[g2].length >= 2) {
+              const p1 = pickN(fPools[g1], 2), p2 = pickN(fPools[g2], 2);
+              if (p1 && p2) {
+                removeFrom([...p1, ...p2], fPools);
+                fPick = [...p1, ...p2]; mPick = []; break outer2F;
+              }
+            }
+          }
+        }
+      } else { // 2M + 2F: M끼리 같은 급수, F끼리 같은 급수
+        outer2MF: for (const gM of GRADES) {
+          if (mPools[gM].length >= 2) {
+            for (const gF of GRADES) {
+              if (fPools[gF].length >= 2) {
+                const mp = pickN(mPools[gM], 2), fp = pickN(fPools[gF], 2);
+                if (mp && fp) {
+                  removeFrom(mp, mPools); removeFrom(fp, fPools);
+                  mPick = mp; fPick = fp; break outer2MF;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 3단계: 급수 무시 (ABCD)
+    if (!mPick && nM > 0) { const mp = pickN(allFrom(mPools), nM); if (mp) { removeFrom(mp, mPools); mPick = mp; } }
+    if (!fPick && nF > 0) { const fp = pickN(allFrom(fPools), nF); if (fp) { removeFrom(fp, fPools); fPick = fp; } }
+
+    const team = [...(mPick || []), ...(fPick || [])];
+    if (team.length !== 4) return null;
+
+    // 중복 팀 방지
+    if (isDuplicate(team)) {
+      const remaining = [...allFrom(mPools), ...allFrom(fPools)];
+      const fix = tryBreakDup(team, remaining, getGender);
+      if (fix) {
+        const outPools = getGender(fix.out) === 'M' ? mPools : fPools;
+        const og = getGrade(fix.out);
+        carry.includes(fix.out) ? outPools[og].unshift(fix.out) : outPools[og].push(fix.out);
+        if (carry.includes(fix.out)) carrySet.add(fix.out);
+        const inPools = getGender(fix.in) === 'M' ? mPools : fPools;
+        const ig = getGrade(fix.in);
+        const inIdx = inPools[ig].indexOf(fix.in);
+        if (inIdx >= 0) inPools[ig].splice(inIdx, 1);
+        carrySet.delete(fix.in);
+        return fix.team;
+      }
+    }
+    return team;
+  }
+
+  const teams = [];
+  for (let i = 0; i < a; i++) { const t = buildOneTeam(4, 0); if (t) teams.push([...t]); }
+  for (let i = 0; i < b; i++) { const t = buildOneTeam(0, 4); if (t) teams.push([...t]); }
+  for (let i = 0; i < c; i++) { const t = buildOneTeam(2, 2); if (t) teams.push([...t]); }
+
+  carry = [...allFrom(mPools), ...allFrom(fPools)];
+
+  teams.forEach(t => {
+    const s = teamSig(t);
+    t.forEach(n => { lastSig[n] = s; });
+  });
+
+  const placed = new Set(teams.flat());
+  waiting = waiting.filter(n => !placed.has(n));
+  restSet.clear();
+
+  let ti = 0;
+  courts.filter(c => !disabled.has(c.id) && !c.team).forEach(c => {
+    if (ti < teams.length) c.team = teams[ti++];
+  });
+  while (ti < teams.length) teamQueue.push(teams[ti++]);
+
+  saveState(); render();
+}
+
+// ═══════════════════════════════════════════════════
+//  GAME FINISH
+// ═══════════════════════════════════════════════════
+function finishGame(courtId) {
+  const c = courts.find(c => c.id === courtId);
+  if (!c?.team) return;
+  c.team.forEach(nm => {
+    if (!registry[nm]) registry[nm] = {playedCount: 0};
+    registry[nm].playedCount++;
+    if (!waiting.includes(nm)) waiting.push(nm);
+  });
+  c.team = null;
+  if (teamQueue.length) c.team = teamQueue.shift();
+  saveState(); render();
+}
+
+function resetCourt(courtId) {
+  const c = courts.find(c => c.id === courtId);
+  if (!c?.team) return;
+  c.team.forEach(nm => {
+    if (!waiting.includes(nm)) waiting.push(nm);
+  });
+  c.team = null;
+  saveState(); render();
+}
+
+function toggleDisable(courtId) {
+  // 인원이 있는 코트는 비활성화 불가 (버튼도 disabled지만 방어선 한 겹 더)
+  const c = courts.find(c => c.id === courtId);
+  if (!disabled.has(courtId) && c?.team?.length) return;
+  disabled.has(courtId) ? disabled.delete(courtId) : disabled.add(courtId);
+  render();
+}
+
+function renameCourt(courtId, name) {
+  const c = courts.find(c => c.id === courtId);
+  if (c) { c.name = name; saveState(); }
+}
+
+// ═══════════════════════════════════════════════════
+//  DRAG & DROP
+// ═══════════════════════════════════════════════════
+function dstart(e, type, data) {
+  drag = {type, ...data};
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+function dend(e) {
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+}
+
+function waDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+function waDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+function waDrop(e) {
+  e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+  dropOnWaiting();
+}
+
+function dropOnWaiting() {
+  if (!drag || drag.type === 'waiting') return;
+  removeDragSrc();
+  if (!waiting.includes(drag.name)) waiting.push(drag.name);
+  drag = null; saveState(); render();
+}
+
+function removeDragSrc() {
+  if (!drag) return;
+  const {type, name, courtId, ti} = drag;
+  if (type === 'waiting') {
+    waiting = waiting.filter(n => n !== name);
+    carry   = carry.filter(n => n !== name);
+  } else if (type === 'court') {
+    const c = courts.find(c => c.id === courtId);
+    if (c?.team) { c.team = c.team.filter(n => n !== name); if (!c.team.length) c.team = null; }
+  } else if (type === 'queue') {
+    const t = teamQueue[ti];
+    if (t) { t.splice(t.indexOf(name), 1); if (!t.length) teamQueue.splice(ti, 1); }
+  }
+}
+
+function dropOnCourt(courtId) {
+  if (!drag) return;
+  const c = courts.find(c => c.id === courtId);
+  if (!c) return;
+  if (drag.type === 'court' && drag.courtId === courtId) return;
+  if (!c.team) c.team = [];
+  if (c.team.length >= 4 || c.team.includes(drag.name)) return;
+  removeDragSrc();
+  c.team.push(drag.name);
+  drag = null; saveState(); render();
+}
+
+// ═══════════════════════════════════════════════════
+//  TOUCH DRAG — 모바일 터치는 HTML5 DnD가 동작하지 않아 별도 레이어로 보완.
+//  길게 누르면(350ms) 칩이 들리고, 그 전에 움직이면 스크롤로 처리한다.
+// ═══════════════════════════════════════════════════
+let touchDnd = null; // {el, type, data, x, y, started, ghost, timer}
+
+function bindTouchDrag(el, type, data) {
+  el.addEventListener('touchstart', e => {
+    if (e.target.closest('.pc-btn')) return; // 💤/✕ 버튼 터치는 드래그 아님
+    const t = e.touches[0];
+    touchDnd = {
+      el, type, data, x: t.clientX, y: t.clientY,
+      started: false, ghost: null,
+      timer: setTimeout(touchLift, 350),
+    };
+    document.addEventListener('touchmove', touchDndMove, {passive: false});
+    document.addEventListener('touchend', touchDndEnd);
+    document.addEventListener('touchcancel', touchDndEnd);
+  }, {passive: true});
+  el.addEventListener('contextmenu', e => { if (touchDnd?.started) e.preventDefault(); });
+}
+
+function touchLift() {
+  if (!touchDnd || touchDnd.started) return;
+  touchDnd.started = true;
+  drag = {type: touchDnd.type, ...touchDnd.data};
+  touchDnd.el.classList.add('dragging');
+  const g = touchDnd.el.cloneNode(true);
+  g.classList.add('touch-ghost');
+  g.style.width = touchDnd.el.offsetWidth + 'px';
+  g.style.left = touchDnd.x + 'px';
+  g.style.top  = touchDnd.y + 'px';
+  document.body.appendChild(g);
+  touchDnd.ghost = g;
+  navigator.vibrate?.(30);
+}
+
+function touchZoneAt(x, y) {
+  const el = document.elementFromPoint(x, y);
+  return el ? el.closest('[data-drop], .wait-area') : null;
+}
+
+function touchDndMove(e) {
+  if (!touchDnd) return;
+  const t = e.touches[0];
+  if (!touchDnd.started) {
+    // 들리기 전에 10px 이상 움직이면 스크롤 의도 — 드래그 취소
+    if (Math.hypot(t.clientX - touchDnd.x, t.clientY - touchDnd.y) > 10) touchDndCleanup();
+    return;
+  }
+  e.preventDefault(); // 드래그 중 화면 스크롤 방지
+  touchDnd.x = t.clientX; touchDnd.y = t.clientY;
+  touchDnd.ghost.style.left = t.clientX + 'px';
+  touchDnd.ghost.style.top  = t.clientY + 'px';
+  const zone = touchZoneAt(t.clientX, t.clientY);
+  document.querySelectorAll('.drag-over').forEach(el => { if (el !== zone) el.classList.remove('drag-over'); });
+  if (zone) zone.classList.add('drag-over');
+}
+
+function touchDndEnd(e) {
+  if (!touchDnd) return;
+  if (touchDnd.started) {
+    const t = e.changedTouches[0];
+    const zone = t ? touchZoneAt(t.clientX, t.clientY) : null;
+    if (zone) {
+      if (zone.dataset.drop !== undefined) dropOnCourt(+zone.dataset.drop);
+      else dropOnWaiting();
+    }
+    drag = null;
+    lastTouchDragEnd = Date.now(); // 드래그 직후 유사 클릭 억제용
+  }
+  touchDndCleanup();
+}
+
+// ═══════════════════════════════════════════════════
+//  COURT PICK — 출석 명단 클릭 → 코트 선택 배치
+// ═══════════════════════════════════════════════════
+let lastTouchDragEnd = 0;
+
+function openCourtPick(name) {
+  document.getElementById('cp-name').textContent = `'${name}' 님을 배치할 코트를 선택하세요`;
+  const list = document.getElementById('cp-list');
+  list.innerHTML = '';
+  courts.forEach(c => {
+    const n = c.team?.length || 0;
+    const isDis = disabled.has(c.id);
+    const full = n >= 4;
+    const b = document.createElement('button');
+    b.className = 'cp-court';
+    b.disabled = isDis || full;
+    b.innerHTML =
+      `<span>${html(c.name)}</span>` +
+      `<span class="cp-cnt">${isDis ? '비활성' : full ? '만석' : `${n}/4`}</span>`;
+    if (!b.disabled) b.onclick = () => {
+      drag = {type: 'waiting', name}; // 드롭 로직 재사용
+      dropOnCourt(c.id);
+      closeCourtPick();
+    };
+    list.appendChild(b);
+  });
+  document.getElementById('cp-overlay').classList.add('open');
+}
+
+function closeCourtPick() {
+  document.getElementById('cp-overlay').classList.remove('open');
+}
+
+function touchDndCleanup() {
+  if (!touchDnd) return;
+  clearTimeout(touchDnd.timer);
+  touchDnd.ghost?.remove();
+  touchDnd.el.classList.remove('dragging');
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+  document.removeEventListener('touchmove', touchDndMove);
+  document.removeEventListener('touchend', touchDndEnd);
+  document.removeEventListener('touchcancel', touchDndEnd);
+  touchDnd = null;
+}
+
+// ═══════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════
+function render() {
+  renderHeader();
+  renderMembers();
+  renderWaiting();
+  renderCourts();
+  renderQueue();
+}
+
+function renderHeader() {
+  const all = new Set([
+    ...waiting,
+    ...courts.flatMap(c => c.team || []),
+    ...teamQueue.flat(),
+  ]);
+  document.getElementById('h-total').textContent  = all.size;
+  document.getElementById('h-wait').textContent   = waiting.length;
+  document.getElementById('h-courts').textContent =
+    courts.filter(c => c.team && !disabled.has(c.id)).length;
+}
+
+// ── 페이징 — 회원 21명/페이지, 출석 명단 12명/페이지, 블록 10개 ──
+const MEMBER_PAGE_SIZE = 21;
+const PAGE_SIZE = 12;
+let memberPage = 1, waitPage = 1;
+
+function renderPager(elId, totalItems, page, onPage, size = PAGE_SIZE) {
+  const el = document.getElementById(elId);
+  el.innerHTML = '';
+  const pages = Math.ceil(totalItems / size);
+  if (pages <= 1) return;
+
+  const blockStart = Math.floor((page - 1) / 10) * 10 + 1;
+  const blockEnd = Math.min(blockStart + 9, pages);
+  const btn = (label, target, {disabled = false, active = false} = {}) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.disabled = disabled;
+    if (active) b.classList.add('active');
+    else if (!disabled) b.onclick = () => onPage(target);
+    el.appendChild(b);
+  };
+  btn('«', 1, {disabled: page === 1});
+  btn('‹', page - 1, {disabled: page === 1});
+  for (let p = blockStart; p <= blockEnd; p++) btn(String(p), p, {active: p === page});
+  btn('›', page + 1, {disabled: page === pages});
+  btn('»', pages, {disabled: page === pages});
+}
+
+function pageSlice(list, page, size = PAGE_SIZE) {
+  return list.slice((page - 1) * size, page * size);
+}
+
+function clampPage(page, totalItems, size = PAGE_SIZE) {
+  return Math.min(Math.max(1, page), Math.max(1, Math.ceil(totalItems / size)));
+}
+
+function renderMembers() {
+  const grid = document.getElementById('member-grid');
+  grid.innerHTML = '';
+
+  if (!savedNames.length) {
+    grid.innerHTML = '<span class="member-empty">등록된 회원이 없습니다. 회원 등록 버튼으로 등록해주세요.</span>';
+    document.getElementById('member-pager').innerHTML = '';
+    return;
+  }
+
+  const sorted = [...savedNames].sort((a, b) => a.localeCompare(b, 'ko'));
+  memberPage = clampPage(memberPage, sorted.length, MEMBER_PAGE_SIZE);
+  pageSlice(sorted, memberPage, MEMBER_PAGE_SIZE).forEach(name => {
+    const isWaiting   = waiting.includes(name);
+    const isElsewhere = onCourt(name) || inQueue(name);
+    const isFemale    = registry[name]?.gender === 'F';
+    const grade       = registry[name]?.grade || 'E';
+
+    const attended = isWaiting || isElsewhere;
+
+    const chip = document.createElement('div');
+    chip.className = 'mem-chip ' + (isFemale ? 'female' : 'male');
+    chip.title = isElsewhere ? '현재 코트 또는 대기 팀에 있습니다'
+               : isWaiting   ? '클릭하여 참석 취소'
+                             : '클릭하여 참석 처리';
+    chip.innerHTML =
+      `<span style="flex:1;">${html(name)}</span>` +
+      (attended ? `<span class="tag attend">출석</span>` : '') +
+      `<button class="mem-grade">${grade}</button>` +
+      `<button class="mem-gender ${isFemale ? 'f' : 'm'}">${isFemale ? '여' : '남'}</button>` +
+      `<button class="mem-chip-del" title="회원 삭제">✕</button>`;
+
+    if (!isElsewhere) chip.addEventListener('click', e => {
+      if (e.target.classList.contains('mem-chip-del')) return;
+      if (e.target.classList.contains('mem-gender')) return;
+      if (e.target.classList.contains('mem-grade')) return;
+      toggleAttend(name);
+    });
+    chip.querySelector('.mem-grade').addEventListener('click', e => {
+      e.stopPropagation();
+      openGradePicker(name, e.currentTarget);
+    });
+    chip.querySelector('.mem-gender').addEventListener('click', e => {
+      e.stopPropagation();
+      toggleGender(name);
+    });
+    chip.querySelector('.mem-chip-del').addEventListener('click', async e => {
+      e.stopPropagation();
+      if (await showDialog({type: 'danger', title: '회원 삭제', message: `'${name}'\n회원을 삭제할까요?`, confirmText: '삭제'})) deleteMember(name);
+    });
+
+    grid.appendChild(chip);
+  });
+
+  renderPager('member-pager', sorted.length, memberPage, p => { memberPage = p; renderMembers(); }, MEMBER_PAGE_SIZE);
+}
+
+function renderWaiting() {
+  const area  = document.getElementById('wait-area');
+  const empty = document.getElementById('wait-empty');
+  area.querySelectorAll('.pc').forEach(el => el.remove());
+
+  // 코트/큐에 배치된 인원 (게임 중)
+  const gamingSet = new Set([
+    ...courts.flatMap(c => c.team || []),
+    ...teamQueue.flat(),
+  ]);
+
+  // 대기+게임중+쉼 모두 한 목록, 가나다 고정 — 상태가 바뀌어도 자리 유지
+  const all = [...new Set([...waiting, ...gamingSet])]
+    .sort((a, b) => a.localeCompare(b, 'ko'));
+  empty.style.display = all.length ? 'none' : '';
+
+  waitPage = clampPage(waitPage, all.length);
+  pageSlice(all, waitPage).forEach(name => {
+    const isCarry  = carry.includes(name);
+    const isRest   = restSet.has(name);
+    const isGaming = gamingSet.has(name);
+    const count    = registry[name]?.playedCount || 0;
+    const isFemale = registry[name]?.gender === 'F';
+    const grade    = registry[name]?.grade || 'E';
+
+    const chip = document.createElement('div');
+    const genderCls = isRest ? '' : (isFemale ? ' female' : ' male');
+    chip.className = 'pc' + genderCls +
+      (isCarry  ? ' carry'  : '') +
+      (isRest   ? ' resting': '') +
+      (isGaming ? ' gaming' : '');
+    chip.draggable = !isRest && !isGaming;
+    const isGuest = guests.has(name);
+    chip.innerHTML =
+      `<span>${html(name)}</span>` +
+      `<span class="pc-cnt">${count}</span>` +
+      `<span class="grade-tag">${grade}</span>` +
+      (isGaming ? `<span class="tag gaming">게임중</span>` : '') +
+      (isGuest && !isGaming ? `<span class="tag guest">게스트</span>` : '') +
+      (isCarry ? `<span title="이전 라운드 잔여">⭐</span>` : '') +
+      `<span class="pc-spacer"></span>` +
+      (!isGaming ? `<button class="pc-btn" title="${isRest ? '쉼 취소' : '쉼 표시'}">💤</button>` : '') +
+      (!isGaming ? `<button class="pc-btn" title="대기 취소">✕</button>` : '');
+
+    if (!isGaming) {
+      const [restBtn, removeBtn] = chip.querySelectorAll('.pc-btn');
+      restBtn.onclick   = () => toggleRest(name);
+      removeBtn.onclick = () => removeParticipant(name);
+      if (!isRest) {
+        chip.addEventListener('dragstart', e => dstart(e, 'waiting', {name}));
+        chip.addEventListener('dragend',   dend);
+        bindTouchDrag(chip, 'waiting', {name});
+        chip.addEventListener('click', e => {
+          if (e.target.closest('.pc-btn')) return;
+          if (Date.now() - lastTouchDragEnd < 400) return; // 터치 드래그 직후 클릭 무시
+          openCourtPick(name);
+        });
+      }
+    }
+    area.appendChild(chip);
+  });
+
+  renderPager('wait-pager', all.length, waitPage, p => { waitPage = p; renderWaiting(); });
+}
+
+function renderCourts() {
+  const grid = document.getElementById('courts-grid');
+  grid.innerHTML = '';
+
+  courts.forEach(court => {
+    const isDisabled = disabled.has(court.id);
+    const hasTeam    = !!court.team;
+
+    const card = document.createElement('div');
+    card.className =
+      'court-card' + (hasTeam ? ' active' : '') + (isDisabled ? ' disabled' : '');
+
+    const zoneClass = 'drop-zone' + (hasTeam && court.team.length >= 4 ? ' full' : '');
+    const membersHtml = hasTeam
+      ? court.team.map(nm => {
+          const gCls   = registry[nm]?.gender === 'F' ? ' female' : ' male';
+          const grade  = registry[nm]?.grade || 'E';
+          return `<div class="tc${gCls}" data-nm="${html(nm)}" data-cid="${court.id}" draggable="true">${html(nm)}<span class="grade-tag">${grade}</span></div>`;
+        }).join('')
+      : `<span style="color:#cbd5e1;font-size:.82rem;">비어 있음</span>`;
+
+    card.innerHTML =
+      `<div class="court-top">` +
+        `<input class="court-name" value="${html(court.name)}" data-cid="${court.id}">` +
+        `<button class="btn btn-xs ${isDisabled ? 'btn-blue' : 'btn-ghost'}" data-toggle="${court.id}"` +
+          `${!isDisabled && hasTeam ? ' disabled title="인원이 있는 코트는 비활성화할 수 없습니다"' : ''}>` +
+          `${isDisabled ? '✅ 활성화' : '🚫 비활성'}` +
+        `</button>` +
+      `</div>` +
+      `<div class="${zoneClass}" data-drop="${court.id}">${membersHtml}</div>` +
+      (hasTeam
+        ? `<div class="court-btn">` +
+            `<button class="btn btn-red btn-sm" style="flex:1;" data-finish="${court.id}"${court.team.length < 4 ? ' disabled' : ''}>경기 종료</button>` +
+            `<button class="btn btn-ghost btn-sm" style="flex:1;" data-reset="${court.id}">초기화</button>` +
+          `</div>`
+        : '');
+
+    card.querySelector('.court-name').addEventListener('change', e => renameCourt(court.id, e.target.value));
+    card.querySelector(`[data-toggle]`).addEventListener('click', () => toggleDisable(court.id));
+    card.querySelector(`[data-finish]`)?.addEventListener('click', () => finishGame(court.id));
+    card.querySelector(`[data-reset]`)?.addEventListener('click', () => resetCourt(court.id));
+
+    const zone = card.querySelector('[data-drop]');
+    zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); zone.classList.remove('drag-over');
+      dropOnCourt(court.id); drag = null;
+    });
+
+    card.querySelectorAll('.tc').forEach(chip => {
+      const nm  = chip.dataset.nm;
+      const cid = +chip.dataset.cid;
+      chip.addEventListener('dragstart', e => dstart(e, 'court', {name: nm, courtId: cid}));
+      chip.addEventListener('dragend',   dend);
+      bindTouchDrag(chip, 'court', {name: nm, courtId: cid});
+      chip.addEventListener('click', () => {
+        if (Date.now() - lastTouchDragEnd < 400) return; // 터치 드래그 직후 클릭 무시
+        drag = {type: 'court', name: nm, courtId: cid}; // 드롭 로직 재사용
+        dropOnWaiting();
+      });
+    });
+
+    grid.appendChild(card);
+  });
+}
+
+function renderQueue() {
+  const card = document.getElementById('queue-card');
+  const list = document.getElementById('queue-list');
+  card.style.display = teamQueue.length ? '' : 'none';
+  list.innerHTML = '';
+
+  teamQueue.forEach((team, ti) => {
+    const div = document.createElement('div');
+    div.className = 'q-team';
+    div.innerHTML =
+      `<span class="q-num">${ti + 1}</span>` +
+      `<div class="q-members">` +
+        team.map(nm => {
+          const gCls  = registry[nm]?.gender === 'F' ? ' female' : ' male';
+          const grade = registry[nm]?.grade || 'E';
+          return `<div class="tc${gCls}" data-nm="${html(nm)}" data-ti="${ti}" draggable="true">${html(nm)}<span class="grade-tag">${grade}</span></div>`;
+        }).join('') +
+      `</div>`;
+
+    div.querySelectorAll('.tc').forEach(chip => {
+      const nm  = chip.dataset.nm;
+      const idx = +chip.dataset.ti;
+      chip.addEventListener('dragstart', e => dstart(e, 'queue', {name: nm, ti: idx}));
+      chip.addEventListener('dragend',   dend);
+      bindTouchDrag(chip, 'queue', {name: nm, ti: idx});
+    });
+    list.appendChild(div);
+  });
+}
+
+// ═══════════════════════════════════════════════════
+//  UTIL
+// ═══════════════════════════════════════════════════
+function html(str) {
+  return String(str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ═══════════════════════════════════════════════════
+//  CUSTOM DIALOG
+// ═══════════════════════════════════════════════════
+let dlgResolve = null;
+
+const DLG_META = {
+  info:    { emoji: 'ℹ️',  confirmCls: 'btn-blue'  },
+  warning: { emoji: '⚠️',  confirmCls: 'btn-amber' },
+  danger:  { emoji: '🗑️', confirmCls: 'btn-red'   },
+};
+
+function showDialog({type = 'info', title, message, confirmText = '확인', cancelText = '취소', showCancel = true}) {
+  return new Promise(resolve => {
+    dlgResolve = resolve;
+    const meta = DLG_META[type] || DLG_META.info;
+
+    document.getElementById('dlg-icon').className  = `dlg-icon ${type}`;
+    document.getElementById('dlg-icon').textContent = meta.emoji;
+    document.getElementById('dlg-title').textContent = title || '';
+    document.getElementById('dlg-msg').textContent   = message || '';
+
+    const actions = document.getElementById('dlg-actions');
+    actions.innerHTML = '';
+    if (showCancel) {
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'btn btn-ghost';
+      cancelBtn.textContent = cancelText;
+      cancelBtn.onclick = () => dlgClose(false);
+      actions.appendChild(cancelBtn);
+    }
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = `btn ${meta.confirmCls}`;
+    confirmBtn.textContent = confirmText;
+    confirmBtn.onclick = () => dlgClose(true);
+    actions.appendChild(confirmBtn);
+    // alert는 확인 버튼이 전체 너비
+    if (!showCancel) confirmBtn.style.flex = '1';
+
+    document.getElementById('dlg-overlay').classList.add('open');
+    confirmBtn.focus();
+  });
+}
+
+function dlgClose(result) {
+  document.getElementById('dlg-overlay').classList.remove('open');
+  if (dlgResolve) { dlgResolve(result); dlgResolve = null; }
+}
+
+function showAlert(title, message) {
+  return showDialog({type: 'info', title, message, showCancel: false});
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (gradePickerTarget !== null) { closeGradePicker(); return; }
+  if (document.getElementById('dlg-overlay').classList.contains('open')) dlgClose(false);
+  if (document.getElementById('cp-overlay').classList.contains('open')) closeCourtPick();
+  if (document.getElementById('guest-overlay').classList.contains('open')) closeGuestModal();
+  if (document.getElementById('members-overlay').classList.contains('open')) closeMembersModal();
+  if (document.getElementById('modal-overlay').classList.contains('open')) closeModal();
+});
+
+// Enter 키로 모달 제출
+document.getElementById('modal-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitModal();
+});
+document.getElementById('guest-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitGuest();
+});
+
+// ═══════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════
+loadState();
+const initialCourtCount = courts.length || 2;
+initCourtSelect(initialCourtCount);
+if (!courts.length) initCourts(initialCourtCount);
+render();
+</script>
+</body>
+</html>
