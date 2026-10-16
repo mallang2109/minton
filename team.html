@@ -1403,6 +1403,7 @@ function openCourtPick(name) {
   document.getElementById('cp-name').textContent = `'${name}' 님을 배치할 코트를 선택하세요`;
   const list = document.getElementById('cp-list');
   list.innerHTML = '';
+
   courts.forEach(c => {
     const n = c.team?.length || 0;
     const isDis = disabled.has(c.id);
@@ -1414,12 +1415,37 @@ function openCourtPick(name) {
       `<span>${html(c.name)}</span>` +
       `<span class="cp-cnt">${isDis ? '비활성' : full ? '만석' : `${n}/4`}</span>`;
     if (!b.disabled) b.onclick = () => {
-      drag = {type: 'waiting', name}; // 드롭 로직 재사용
+      drag = {type: 'waiting', name};
       dropOnCourt(c.id);
       closeCourtPick();
     };
     list.appendChild(b);
   });
+
+  if (teamQueue.length) {
+    const sep = document.createElement('div');
+    sep.style.cssText = 'font-size:.72rem;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:8px 0 2px';
+    sep.textContent = '대기 팀';
+    list.appendChild(sep);
+
+    teamQueue.forEach((team, ti) => {
+      const n = team.length;
+      const full = n >= 4;
+      const b = document.createElement('button');
+      b.className = 'cp-court';
+      b.disabled = full;
+      b.innerHTML =
+        `<span>대기 ${ti + 1}팀 (${team.map(nm => html(nm)).join(', ')})</span>` +
+        `<span class="cp-cnt">${full ? '만석' : `${n}/4`}</span>`;
+      if (!full) b.onclick = () => {
+        waiting = waiting.filter(w => w !== name);
+        teamQueue[ti] = [...team, name];
+        saveState(); render(); closeCourtPick();
+      };
+      list.appendChild(b);
+    });
+  }
+
   document.getElementById('cp-overlay').classList.add('open');
 }
 
@@ -1713,6 +1739,13 @@ function renderQueue() {
       chip.addEventListener('dragstart', e => dstart(e, 'queue', {name: nm, ti: idx}));
       chip.addEventListener('dragend',   dend);
       bindTouchDrag(chip, 'queue', {name: nm, ti: idx});
+      chip.addEventListener('click', () => {
+        if (Date.now() - lastTouchDragEnd < 400) return;
+        teamQueue[idx] = teamQueue[idx].filter(n => n !== nm);
+        if (teamQueue[idx].length === 0) teamQueue.splice(idx, 1);
+        if (!waiting.includes(nm)) waiting.push(nm);
+        saveState(); render();
+      });
     });
     list.appendChild(div);
   });
