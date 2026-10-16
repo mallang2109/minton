@@ -345,31 +345,29 @@
 
     /* ── ASSIGN ORDER ────────────────────────────────── */
     .assign-order {
-      margin-top: 12px; padding: 10px 12px;
+      margin-top: 12px; padding: 10px 14px;
       background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0;
-      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-      font-size: .78rem;
+      font-size: .78rem; color: #475569; line-height: 1.7;
     }
     .assign-order-label {
-      color: #94a3b8; font-weight: 700; text-transform: uppercase;
-      letter-spacing: .04em; white-space: nowrap; margin-right: 2px;
+      display: block; color: #94a3b8; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .04em; margin-bottom: 4px; font-size: .72rem;
     }
-    .ao-item {
-      display: inline-flex; align-items: center; gap: 3px;
-      background: #fff; border: 1.5px solid #bfdbfe;
-      border-radius: 20px; padding: 3px 10px;
-      color: #1e40af; font-weight: 700; white-space: nowrap;
-    }
-    .ao-item.full   { border-color: #fca5a5; color: #991b1b; background: #fef2f2; }
-    .ao-item.queue  { border-color: #d1d5db; color: #6b7280; background: #f9fafb; }
+    .ao-rule { display: flex; align-items: baseline; gap: 6px; }
     .ao-num {
-      font-size: .7rem; background: #bfdbfe; color: #1e40af;
+      flex-shrink: 0; font-size: .68rem; background: #e2e8f0; color: #64748b;
       border-radius: 50%; width: 16px; height: 16px;
       display: inline-flex; align-items: center; justify-content: center;
-      font-weight: 800; flex-shrink: 0;
+      font-weight: 800;
     }
-    .ao-item.full .ao-num  { background: #fca5a5; color: #991b1b; }
-    .ao-item.queue .ao-num { background: #e5e7eb; color: #6b7280; }
+    .ao-badge {
+      display: inline-block; padding: 1px 7px; border-radius: 20px;
+      font-weight: 700; font-size: .74rem; white-space: nowrap;
+    }
+    .ao-badge.g1 { background: #dbeafe; color: #1e40af; }
+    .ao-badge.g2 { background: #dcfce7; color: #166534; }
+    .ao-badge.g3 { background: #fef9c3; color: #854d0e; }
+    .ao-badge.g4 { background: #f1f5f9; color: #475569; }
     .btn:disabled { opacity: .45; cursor: not-allowed; }
 
     /* ── QUEUE ───────────────────────────────────────── */
@@ -531,7 +529,18 @@
       </div>
     </div>
     <div class="courts-grid" id="courts-grid"></div>
-    <div class="assign-order" id="assign-order"></div>
+    <div class="assign-order">
+      <span class="assign-order-label">팀짜기 우선순위</span>
+      <div class="ao-rule"><span class="ao-num">1</span><span>⭐ 이전 라운드에서 빠진 인원(잔여)을 먼저 배정</span></div>
+      <div class="ao-rule"><span class="ao-num">2</span><span>게임 수가 적은 사람일수록 선택 확률 높음 (가중치 샘플링)</span></div>
+      <div class="ao-rule"><span class="ao-num">3</span><span>성별 조합 — 남4 · 여4 · 혼성(남2+여2) 중 인원에 맞는 조합 우선</span></div>
+      <div class="ao-rule"><span class="ao-num">4</span><span>급수 조합 우선순위 —
+        <span class="ao-badge g1">AAAA</span> 동일 급수 →
+        <span class="ao-badge g2">AABB</span> 두 쌍 동급 →
+        <span class="ao-badge g3">ABCD</span> 급수 무시
+      </span></div>
+      <div class="ao-rule"><span class="ao-num">5</span><span>4인 미만이면 대기 팀으로 적립, 다음 팀짜기 때 carry 우선 적용</span></div>
+    </div>
   </div>
 
   <!-- 대기 팀 -->
@@ -1677,23 +1686,6 @@ function renderCourts() {
     grid.appendChild(card);
   });
 
-  // 팀 배정 순서 표시
-  const aoEl = document.getElementById('assign-order');
-  const orderedCourts = courts.filter(c => !disabled.has(c.id));
-  if (!orderedCourts.length) { aoEl.style.display = 'none'; return; }
-  aoEl.style.display = '';
-
-  let buf = `<span class="assign-order-label">배정 순서</span>`;
-  let seq = 1;
-  orderedCourts.forEach(c => {
-    const isFull = !!c.team;
-    buf += `<span class="ao-item${isFull ? ' full' : ''}">` +
-      `<span class="ao-num">${seq++}</span>${c.name}` +
-      (isFull ? ' ✓' : '') +
-    `</span>`;
-  });
-  buf += `<span class="ao-item queue"><span class="ao-num">${seq}</span>대기 팀</span>`;
-  aoEl.innerHTML = buf;
 }
 
 function renderQueue() {
