@@ -230,7 +230,7 @@
     }
     .pc.male         { background: #e0f2fe; border-color: #7dd3fc; }
     .pc.female       { background: #fce7f3; border-color: #f9a8d4; }
-    .pc.resting      { background: #f8fafc; border-color: #cbd5e1; color: #94a3b8; text-decoration: line-through; cursor: default; }
+    .pc.resting      { background: #f8fafc; border-color: #cbd5e1; color: #94a3b8; cursor: default; }
     .pc-cnt {
       background: var(--blue); color: #fff;
       border-radius: 10px; padding: 1px 7px;
@@ -1180,7 +1180,6 @@ async function buildTeams() {
 
   const placed = new Set(teams.flat());
   waiting = waiting.filter(n => !placed.has(n));
-  restSet.clear();
 
   let ti = 0;
   courts.filter(c => !disabled.has(c.id) && !c.team).forEach(c => {
@@ -1292,7 +1291,7 @@ let touchDnd = null; // {el, type, data, x, y, started, ghost, timer}
 
 function bindTouchDrag(el, type, data) {
   el.addEventListener('touchstart', e => {
-    if (e.target.closest('.pc-btn')) return; // 💤/✕ 버튼 터치는 드래그 아님
+    if (e.target.closest('.pc-btn')) return; // 휴식/✕ 버튼 터치는 드래그 아님
     const t = e.touches[0];
     touchDnd = {
       el, type, data, x: t.clientX, y: t.clientY,
@@ -1553,14 +1552,14 @@ function renderWaiting() {
     chip.draggable = !isRest && !isGaming;
     const isGuest = guests.has(name);
     chip.innerHTML =
-      `<span>${html(name)}</span>` +
+      `<span>${html(name)}${isRest ? ' 💤' : ''}</span>` +
       `<span class="pc-cnt">${count}</span>` +
       `<span class="grade-tag">${grade}</span>` +
       (isGaming ? `<span class="tag gaming">게임중</span>` : '') +
       (isGuest && !isGaming ? `<span class="tag guest">게스트</span>` : '') +
       (isCarry ? `<span title="이전 라운드 잔여">⭐</span>` : '') +
       `<span class="pc-spacer"></span>` +
-      (!isGaming ? `<button class="pc-btn" title="${isRest ? '쉼 취소' : '쉼 표시'}">💤</button>` : '') +
+      (!isGaming ? `<button class="pc-btn" title="${isRest ? '휴식취소' : '휴식'}">` + (isRest ? '휴식취소' : '휴식') + `</button>` : '') +
       (!isGaming ? `<button class="pc-btn" title="대기 취소">✕</button>` : '');
 
     if (!isGaming) {
