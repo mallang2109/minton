@@ -455,8 +455,14 @@
     }
     .members-hd {
       display: flex; align-items: center; justify-content: space-between;
-      gap: 8px; margin-bottom: 14px; flex-shrink: 0;
+      gap: 8px; margin-bottom: 10px; flex-shrink: 0;
     }
+    .member-search {
+      width: 100%; box-sizing: border-box; margin-bottom: 10px; flex-shrink: 0;
+      padding: 7px 12px; border: 1.5px solid #e2e8f0; border-radius: 8px;
+      font-size: .9rem; outline: none;
+    }
+    .member-search:focus { border-color: var(--blue); }
     .members-box .member-grid {
       /* 21명 3열 = 7행: 7×36px + 6×7px 간격 */
       min-height: calc(7 * 36px + 6 * 7px) !important;
@@ -590,6 +596,7 @@
         <button class="modal-close-btn" onclick="closeMembersModal()">✕</button>
       </div>
     </div>
+    <input class="member-search" id="member-search" type="search" placeholder="이름 검색…" oninput="memberSearchChange(this.value)">
     <div class="member-grid" id="member-grid">
       <span class="member-empty">등록된 회원이 없습니다.</span>
     </div>
@@ -806,7 +813,15 @@ function setModalGrade(g) {
 }
 
 function openMembersModal() {
+  memberSearch = '';
+  document.getElementById('member-search').value = '';
   document.getElementById('members-overlay').classList.add('open');
+}
+
+function memberSearchChange(val) {
+  memberSearch = val.trim();
+  memberPage = 1;
+  renderMembers();
 }
 
 function closeMembersModal() {
@@ -1491,7 +1506,7 @@ function renderHeader() {
 // ── 페이징 — 회원 21명/페이지, 출석 명단 12명/페이지, 블록 10개 ──
 const MEMBER_PAGE_SIZE = 21;
 const PAGE_SIZE = 12;
-let memberPage = 1, waitPage = 1;
+let memberPage = 1, waitPage = 1, memberSearch = '';
 
 function renderPager(elId, totalItems, page, onPage, size = PAGE_SIZE) {
   const el = document.getElementById(elId);
@@ -1534,7 +1549,9 @@ function renderMembers() {
     return;
   }
 
-  const sorted = [...savedNames].sort((a, b) => a.localeCompare(b, 'ko'));
+  const sorted = [...savedNames]
+    .filter(n => !memberSearch || n.includes(memberSearch))
+    .sort((a, b) => a.localeCompare(b, 'ko'));
   memberPage = clampPage(memberPage, sorted.length, MEMBER_PAGE_SIZE);
   pageSlice(sorted, memberPage, MEMBER_PAGE_SIZE).forEach(name => {
     const isWaiting   = waiting.includes(name);
