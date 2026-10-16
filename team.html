@@ -342,6 +342,34 @@
     .gp-item:hover { background: #f1f5f9; }
     .gp-item.current { background: #eef2ff; color: #3730a3; }
     .court-btn   { margin-top: 8px; display: flex; gap: 6px; }
+
+    /* ── ASSIGN ORDER ────────────────────────────────── */
+    .assign-order {
+      margin-top: 12px; padding: 10px 12px;
+      background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0;
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+      font-size: .78rem;
+    }
+    .assign-order-label {
+      color: #94a3b8; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .04em; white-space: nowrap; margin-right: 2px;
+    }
+    .ao-item {
+      display: inline-flex; align-items: center; gap: 3px;
+      background: #fff; border: 1.5px solid #bfdbfe;
+      border-radius: 20px; padding: 3px 10px;
+      color: #1e40af; font-weight: 700; white-space: nowrap;
+    }
+    .ao-item.full   { border-color: #fca5a5; color: #991b1b; background: #fef2f2; }
+    .ao-item.queue  { border-color: #d1d5db; color: #6b7280; background: #f9fafb; }
+    .ao-num {
+      font-size: .7rem; background: #bfdbfe; color: #1e40af;
+      border-radius: 50%; width: 16px; height: 16px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 800; flex-shrink: 0;
+    }
+    .ao-item.full .ao-num  { background: #fca5a5; color: #991b1b; }
+    .ao-item.queue .ao-num { background: #e5e7eb; color: #6b7280; }
     .btn:disabled { opacity: .45; cursor: not-allowed; }
 
     /* ── QUEUE ───────────────────────────────────────── */
@@ -504,6 +532,7 @@
       </div>
     </div>
     <div class="courts-grid" id="courts-grid"></div>
+    <div class="assign-order" id="assign-order"></div>
   </div>
 
   <!-- 대기 팀 -->
@@ -1648,6 +1677,24 @@ function renderCourts() {
 
     grid.appendChild(card);
   });
+
+  // 팀 배정 순서 표시
+  const aoEl = document.getElementById('assign-order');
+  const orderedCourts = courts.filter(c => !disabled.has(c.id));
+  if (!orderedCourts.length) { aoEl.style.display = 'none'; return; }
+  aoEl.style.display = '';
+
+  let html = `<span class="assign-order-label">배정 순서</span>`;
+  let seq = 1;
+  orderedCourts.forEach(c => {
+    const isFull = !!c.team;
+    html += `<span class="ao-item${isFull ? ' full' : ''}">` +
+      `<span class="ao-num">${seq++}</span>${c.name}` +
+      (isFull ? ' ✓' : '') +
+    `</span>`;
+  });
+  html += `<span class="ao-item queue"><span class="ao-num">${seq}</span>대기 팀</span>`;
+  aoEl.innerHTML = html;
 }
 
 function renderQueue() {
