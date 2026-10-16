@@ -1684,17 +1684,17 @@ function renderCourts() {
   if (!orderedCourts.length) { aoEl.style.display = 'none'; return; }
   aoEl.style.display = '';
 
-  let html = `<span class="assign-order-label">배정 순서</span>`;
+  let buf = `<span class="assign-order-label">배정 순서</span>`;
   let seq = 1;
   orderedCourts.forEach(c => {
     const isFull = !!c.team;
-    html += `<span class="ao-item${isFull ? ' full' : ''}">` +
+    buf += `<span class="ao-item${isFull ? ' full' : ''}">` +
       `<span class="ao-num">${seq++}</span>${c.name}` +
       (isFull ? ' ✓' : '') +
     `</span>`;
   });
-  html += `<span class="ao-item queue"><span class="ao-num">${seq}</span>대기 팀</span>`;
-  aoEl.innerHTML = html;
+  buf += `<span class="ao-item queue"><span class="ao-num">${seq}</span>대기 팀</span>`;
+  aoEl.innerHTML = buf;
 }
 
 function renderQueue() {
